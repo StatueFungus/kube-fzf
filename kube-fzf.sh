@@ -16,12 +16,13 @@ EOF
       ;;
     tailpod)
       cat << EOF
-tailpod [-a | -n <namespace-query>] [pod-query]
+tailpod [-a | -n <namespace-query> | -j] [pod-query]
 
 -a                    -  Search in all namespaces
 -h                    -  Show help
 -n <namespace-query>  -  Find namespaces matching <namespace-query> and do fzf.
                          If there is only one match then it is selected automatically.
+-j                    -  Parse logs in pretty json format
 EOF
       ;;
     execpod)
@@ -61,6 +62,7 @@ EOF
 
 _kube_fzf_handler() {
   local opt namespace_query pod_query cmd
+  local json_log=false
   local open=false
   local copy=false
   local OPTIND=1
@@ -68,7 +70,7 @@ _kube_fzf_handler() {
 
   shift $((OPTIND))
 
-  while getopts ":hn:aoc" opt; do
+  while getopts ":hn:aocj" opt; do
     case $opt in
       h)
         _kube_fzf_usage "$func"
@@ -85,6 +87,9 @@ _kube_fzf_handler() {
         ;;
       c)
         copy=true
+        ;;
+      j)
+        json_log=true
         ;;
       \?)
         echo "Invalid Option: -$OPTARG."
@@ -127,13 +132,13 @@ _kube_fzf_handler() {
     pod_query=$1
   fi
 
-  args="$namespace_query|$pod_query|$cmd|$open|$copy"
+  args="$namespace_query|$pod_query|$cmd|$open|$copy|$json_log"
 }
 
 _kube_fzf_fzf_args() {
   local search_query=$1
   local extra_args=$2
-  local fzf_args="--height=10 --ansi --reverse $extra_args"
+  local fzf_args="--height=20 --ansi --reverse $extra_args"
   [ -n "$search_query" ] && fzf_args="$fzf_args --query=$search_query"
   echo "$fzf_args"
 }

@@ -11,6 +11,7 @@ tailpod() {
   _kube_fzf_handler "tailpod" "$@"
   namespace_query=$(echo $args | awk -F '|' '{ print $1 }')
   pod_query=$(echo $args | awk -F '|' '{ print $2 }')
+  json_logs=$(echo $args | awk -F '|' '{ print $6 }')
 
   result=$(_kube_fzf_search_pod "$namespace_query" "$pod_query")
   IFS=$'|' read -r namespace pod_name <<< "$result"
@@ -20,8 +21,16 @@ tailpod() {
     | tr ' ' '\n' \
     | fzf $(echo $fzf_args))
 
-  _kube_fzf_echo "kubectl logs --namespace='$namespace' --follow --tail=200 $pod_name -c $container_name"
-  kubectl logs --namespace=$namespace --follow --tail=200 $pod_name -c $container_name
+  if [ $json_logs = "true" ]; then
+    _kube_fzf_echo "kubectl logs --namespace='$namespace' --follow --tail=400 $pod_name -c $container_name"
+    kubectl logs --namespace=$namespace --follow --tail=200 $pod_name -c $container_name \
+      | fzf -i -e --height=100% -d=";" --preview="echo -E {} | jq -C . | sed 's/\\\n/\n/g; s/\\\t/\t/g'" --preview-window="right,60%,:wrap"
+  else
+    _kube_fzf_echo "kubectl logs --namespace='$namespace' --follow --tail=400 $pod_name -c $container_name"
+    kubectl logs --namespace=$namespace --follow --tail=200 $pod_name -c $container_name \
+      | fzf -i -e --height=100% -d=";" --preview="echo {}" --preview-window="bottom,25%,:wrap,:hidden"
+  fi
+
 }
 
 tailpod "$@"
